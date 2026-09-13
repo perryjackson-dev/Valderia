@@ -23,9 +23,10 @@ export default async function FieldPage() {
     return <p>No city found.</p>;
   }
 
-  // Finalize any building upgrades whose timer has already elapsed before
-  // reading plot state, so levels shown are always authoritative.
+  // Finalize any building upgrades whose timer has already elapsed, and
+  // apply elapsed-time resource production, before reading state below.
   await supabase.rpc("resolve_plot_upgrades", { p_city_id: city.id });
+  await supabase.rpc("tick_my_city");
 
   const [{ data: plots }, { data: resources }, { data: buildings }] = await Promise.all([
     supabase.from("field_plots").select("*").eq("city_id", city.id).order("plot_index"),

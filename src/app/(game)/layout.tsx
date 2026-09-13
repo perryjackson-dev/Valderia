@@ -14,6 +14,10 @@ export default async function GameLayout({ children }: { children: React.ReactNo
     redirect("/login");
   }
 
+  // Server-authoritative: apply elapsed-time production before showing
+  // resources, rather than trusting/extrapolating on the client.
+  await supabase.rpc("tick_my_city");
+
   const { data: city } = await supabase
     .from("cities")
     .select("id, name, x, y")

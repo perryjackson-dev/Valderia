@@ -572,6 +572,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_resource_tick: { Args: { p_city_id: string }; Returns: undefined }
       resolve_plot_upgrades: { Args: { p_city_id: string }; Returns: undefined }
       start_building_upgrade: {
         Args: {
@@ -582,6 +583,8 @@ export type Database = {
         }
         Returns: undefined
       }
+      tick_all_cities: { Args: never; Returns: undefined }
+      tick_my_city: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
