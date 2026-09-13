@@ -2,12 +2,12 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { startCityBuildingUpgrade } from "./actions";
+import { startPlotUpgrade } from "./plot-actions";
 import { computeUpgradeCost, computeUpgradeSeconds, canAfford, type ResourceCost } from "@/lib/game/costs";
 import type { Database } from "@/lib/supabase/database.types";
 
 type Building = Database["public"]["Tables"]["buildings"]["Row"];
-type Plot = Database["public"]["Tables"]["city_plots"]["Row"];
+type Plot = Database["public"]["Tables"]["city_plots"]["Row"] | Database["public"]["Tables"]["field_plots"]["Row"];
 
 function formatDuration(ms: number): string {
   const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
@@ -32,17 +32,19 @@ function CostLine({ cost, available }: { cost: ResourceCost; available: Resource
 
 export default function PlotCard({
   cityId,
+  plotKind,
   plot,
   buildings,
   available,
 }: {
   cityId: string;
+  plotKind: "city" | "field";
   plot: Plot;
   buildings: Building[];
   available: ResourceCost;
 }) {
   const router = useRouter();
-  const [state, formAction, pending] = useActionState(startCityBuildingUpgrade, null);
+  const [state, formAction, pending] = useActionState(startPlotUpgrade, null);
   const [selected, setSelected] = useState(buildings[0]?.type ?? "");
   const [now, setNow] = useState(() => Date.now());
 
@@ -104,6 +106,7 @@ export default function PlotCard({
                 <p className="text-xs opacity-60">{seconds}s</p>
                 <form action={formAction}>
                   <input type="hidden" name="cityId" value={cityId} />
+                  <input type="hidden" name="plotKind" value={plotKind} />
                   <input type="hidden" name="plotIndex" value={plot.plot_index} />
                   <input type="hidden" name="buildingType" value={plot.building_type ?? selected} />
                   <button

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import PlotCard from "./plot-card";
+import PlotCard from "../plot-card";
 
 export default async function CityPage() {
   const supabase = await createClient();
@@ -49,6 +49,7 @@ export default async function CityPage() {
           <PlotCard
             key={plot.id}
             cityId={city.id}
+            plotKind="city"
             plot={plot}
             buildings={buildings ?? []}
             available={available}
