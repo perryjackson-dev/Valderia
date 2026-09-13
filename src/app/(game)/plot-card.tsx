@@ -4,18 +4,11 @@ import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { startPlotUpgrade } from "./plot-actions";
 import { computeUpgradeCost, computeUpgradeSeconds, canAfford, type ResourceCost } from "@/lib/game/costs";
+import { formatDuration } from "@/lib/game/time";
 import type { Database } from "@/lib/supabase/database.types";
 
 type Building = Database["public"]["Tables"]["buildings"]["Row"];
 type Plot = Database["public"]["Tables"]["city_plots"]["Row"] | Database["public"]["Tables"]["field_plots"]["Row"];
-
-function formatDuration(ms: number): string {
-  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
-  return [h, m, s].map((n) => String(n).padStart(2, "0")).join(":");
-}
 
 function CostLine({ cost, available }: { cost: ResourceCost; available: ResourceCost }) {
   const entries = (Object.keys(cost) as (keyof ResourceCost)[]).filter((k) => cost[k] > 0);

@@ -574,6 +574,10 @@ export type Database = {
     Functions: {
       apply_resource_tick: { Args: { p_city_id: string }; Returns: undefined }
       resolve_plot_upgrades: { Args: { p_city_id: string }; Returns: undefined }
+      resolve_training_queue: {
+        Args: { p_city_id: string }
+        Returns: undefined
+      }
       start_building_upgrade: {
         Args: {
           p_building_type: string
@@ -581,6 +585,10 @@ export type Database = {
           p_plot_index: number
           p_plot_kind: string
         }
+        Returns: undefined
+      }
+      start_troop_training: {
+        Args: { p_city_id: string; p_quantity: number; p_troop_type: string }
         Returns: undefined
       }
       tick_all_cities: { Args: never; Returns: undefined }
