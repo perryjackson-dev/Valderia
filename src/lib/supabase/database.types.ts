@@ -108,6 +108,7 @@ export type Database = {
           effect: Json
           max_level: number
           type: string
+          unique_per_city: boolean
         }
         Insert: {
           base_build_seconds: number
@@ -119,6 +120,7 @@ export type Database = {
           effect?: Json
           max_level?: number
           type: string
+          unique_per_city?: boolean
         }
         Update: {
           base_build_seconds?: number
@@ -130,6 +132,7 @@ export type Database = {
           effect?: Json
           max_level?: number
           type?: string
+          unique_per_city?: boolean
         }
         Relationships: []
       }

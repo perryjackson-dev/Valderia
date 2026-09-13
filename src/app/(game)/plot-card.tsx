@@ -6,18 +6,18 @@ import { startPlotUpgrade } from "./plot-actions";
 import { computeUpgradeCost, computeUpgradeSeconds, canAfford, type ResourceCost } from "@/lib/game/costs";
 import { formatDuration } from "@/lib/game/time";
 import type { Database } from "@/lib/supabase/database.types";
+import TrainPanel from "./troops/train-panel";
 
 type Building = Database["public"]["Tables"]["buildings"]["Row"];
 type Plot = Database["public"]["Tables"]["city_plots"]["Row"] | Database["public"]["Tables"]["field_plots"]["Row"];
+type TroopType = Database["public"]["Tables"]["troop_types"]["Row"];
 
 function CostLine({ cost, available }: { cost: ResourceCost; available: ResourceCost }) {
   const entries = (Object.keys(cost) as (keyof ResourceCost)[]).filter((k) => cost[k] > 0);
   if (entries.length === 0) return <p className="text-xs opacity-60">Free</p>;
   return (
     <p className="text-xs opacity-80">
-      {entries
-        .map((k) => `${cost[k]} ${k}`)
-        .join(", ")}
+      {entries.map((k) => `${cost[k]} ${k}`).join(", ")}
       {!canAfford(cost, available) && <span className="ml-1 text-red-600">(not enough resources)</span>}
     </p>
   );
@@ -29,16 +29,32 @@ export default function PlotCard({
   plot,
   buildings,
   available,
+  builtBuildingTypes,
+  cityBusy,
+  troopTypes,
+  freeTrainingSlots,
+  maxBarracksLevel,
 }: {
   cityId: string;
   plotKind: "city" | "field";
   plot: Plot;
   buildings: Building[];
   available: ResourceCost;
+  builtBuildingTypes: Set<string>;
+  cityBusy: boolean;
+  /** Only needed for Field View, to render the Barracks training panel. */
+  troopTypes?: TroopType[];
+  freeTrainingSlots?: number;
+  maxBarracksLevel?: number;
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(startPlotUpgrade, null);
-  const [selected, setSelected] = useState(buildings[0]?.type ?? "");
+
+  const buildableOptions = buildings.filter(
+    (b) => !b.unique_per_city || !builtBuildingTypes.has(b.type) || b.type === plot.building_type
+  );
+  const [selected, setSelected] = useState(buildableOptions[0]?.type ?? "");
+
   const [now, setNow] = useState(() => Date.now());
 
   const upgrading = Boolean(plot.upgrade_completes_at);
@@ -57,11 +73,13 @@ export default function PlotCard({
   }, [now, upgrading, completesAt, router]);
 
   const currentBuilding = buildings.find((b) => b.type === plot.building_type);
-  const targetBuilding = plot.building_type ? currentBuilding : buildings.find((b) => b.type === selected);
+  const targetBuilding = plot.building_type ? currentBuilding : buildableOptions.find((b) => b.type === selected);
 
   const cost = targetBuilding ? computeUpgradeCost(targetBuilding, plot.level) : null;
   const seconds = targetBuilding ? computeUpgradeSeconds(targetBuilding, plot.level) : null;
   const atMaxLevel = targetBuilding ? plot.level >= targetBuilding.max_level : false;
+  const blockedByQueue = cityBusy && !upgrading;
+  const isActiveBarracks = plot.building_type === "barracks" && plot.level >= 1 && !upgrading;
 
   return (
     <div className="flex flex-col gap-2 rounded border border-black/10 p-3 dark:border-white/10">
@@ -76,45 +94,62 @@ export default function PlotCard({
         <p className="text-sm font-mono">{formatDuration(completesAt - now)}</p>
       ) : (
         <>
-          {!plot.building_type && (
-            <select
-              value={selected}
-              onChange={(e) => setSelected(e.target.value)}
-              className="rounded border border-black/20 px-2 py-1 text-xs dark:border-white/20"
-            >
-              {buildings.map((b) => (
-                <option key={b.type} value={b.type}>
-                  {b.display_name}
-                </option>
-              ))}
-            </select>
-          )}
+          {!plot.building_type &&
+            (buildableOptions.length > 0 ? (
+              <select
+                value={selected}
+                onChange={(e) => setSelected(e.target.value)}
+                className="rounded border border-black/20 px-2 py-1 text-xs dark:border-white/20"
+              >
+                {buildableOptions.map((b) => (
+                  <option key={b.type} value={b.type}>
+                    {b.display_name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="text-xs opacity-60">No new buildings available</p>
+            ))}
 
-          {atMaxLevel ? (
+          {targetBuilding && (atMaxLevel ? (
             <p className="text-xs opacity-60">Max level</p>
           ) : (
             cost && (
               <>
                 <CostLine cost={cost} available={available} />
                 <p className="text-xs opacity-60">{seconds}s</p>
-                <form action={formAction}>
-                  <input type="hidden" name="cityId" value={cityId} />
-                  <input type="hidden" name="plotKind" value={plotKind} />
-                  <input type="hidden" name="plotIndex" value={plot.plot_index} />
-                  <input type="hidden" name="buildingType" value={plot.building_type ?? selected} />
-                  <button
-                    type="submit"
-                    disabled={pending || !canAfford(cost, available)}
-                    className="w-full rounded bg-foreground px-2 py-1 text-xs font-medium text-background disabled:opacity-40"
-                  >
-                    {pending ? "..." : plot.building_type ? "Upgrade" : "Build"}
-                  </button>
-                </form>
+                {blockedByQueue ? (
+                  <p className="text-xs opacity-60">Construction already in progress elsewhere</p>
+                ) : (
+                  <form action={formAction}>
+                    <input type="hidden" name="cityId" value={cityId} />
+                    <input type="hidden" name="plotKind" value={plotKind} />
+                    <input type="hidden" name="plotIndex" value={plot.plot_index} />
+                    <input type="hidden" name="buildingType" value={plot.building_type ?? selected} />
+                    <button
+                      type="submit"
+                      disabled={pending || !canAfford(cost, available)}
+                      className="w-full rounded bg-foreground px-2 py-1 text-xs font-medium text-background disabled:opacity-40"
+                    >
+                      {pending ? "..." : plot.building_type ? "Upgrade" : "Build"}
+                    </button>
+                  </form>
+                )}
               </>
             )
-          )}
+          ))}
           {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
         </>
+      )}
+
+      {isActiveBarracks && troopTypes && (
+        <TrainPanel
+          cityId={cityId}
+          troopTypes={troopTypes}
+          available={available}
+          maxBarracksLevel={maxBarracksLevel ?? plot.level}
+          freeSlots={freeTrainingSlots ?? 0}
+        />
       )}
     </div>
   );

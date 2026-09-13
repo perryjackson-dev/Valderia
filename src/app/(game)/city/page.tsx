@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveCity } from "@/lib/game/active-city";
+import { getCityConstructionState } from "@/lib/game/city-state";
 import PlotCard from "../plot-card";
 
 export default async function CityPage() {
@@ -13,11 +15,7 @@ export default async function CityPage() {
     redirect("/login");
   }
 
-  const { data: city } = await supabase
-    .from("cities")
-    .select("id, name, x, y")
-    .eq("owner_id", user.id)
-    .single();
+  const { city } = await getActiveCity(supabase, user.id);
 
   if (!city) {
     return <p>No city found.</p>;
@@ -28,11 +26,12 @@ export default async function CityPage() {
   await supabase.rpc("resolve_plot_upgrades", { p_city_id: city.id });
   await supabase.rpc("tick_my_city");
 
-  const [{ data: plots }, { data: resources }, { data: buildings }] = await Promise.all([
-    supabase.from("city_plots").select("*").eq("city_id", city.id).order("plot_index"),
-    supabase.from("resources").select("food, wood, stone, ore, gold").eq("city_id", city.id).single(),
-    supabase.from("buildings").select("*").eq("category", "city").order("display_name"),
-  ]);
+  const [{ builtBuildingTypes, cityBusy, cityPlots: plots }, { data: resources }, { data: buildings }] =
+    await Promise.all([
+      getCityConstructionState(supabase, city.id),
+      supabase.from("resources").select("food, wood, stone, ore, gold").eq("city_id", city.id).single(),
+      supabase.from("buildings").select("*").eq("category", "city").order("display_name"),
+    ]);
 
   const available = {
     food: Number(resources?.food ?? 0),
@@ -46,7 +45,7 @@ export default async function CityPage() {
     <div className="flex flex-col gap-4">
       <h1 className="text-xl font-semibold">City View</h1>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-        {plots?.map((plot) => (
+        {plots.map((plot) => (
           <PlotCard
             key={plot.id}
             cityId={city.id}
@@ -54,6 +53,8 @@ export default async function CityPage() {
             plot={plot}
             buildings={buildings ?? []}
             available={available}
+            builtBuildingTypes={builtBuildingTypes}
+            cityBusy={cityBusy}
           />
         ))}
       </div>

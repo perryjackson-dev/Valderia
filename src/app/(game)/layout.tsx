@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveCity } from "@/lib/game/active-city";
 import { signOut } from "../login/actions";
 import GameNav from "./game-nav";
+import CitySwitcher from "./city-switcher";
 
 export default async function GameLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -18,11 +20,7 @@ export default async function GameLayout({ children }: { children: React.ReactNo
   // resources, rather than trusting/extrapolating on the client.
   await supabase.rpc("tick_my_city");
 
-  const { data: city } = await supabase
-    .from("cities")
-    .select("id, name, x, y")
-    .eq("owner_id", user.id)
-    .single();
+  const { city, cities } = await getActiveCity(supabase, user.id);
 
   const { data: resources } = city
     ? await supabase
@@ -38,6 +36,7 @@ export default async function GameLayout({ children }: { children: React.ReactNo
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
             <span className="font-semibold">{city?.name ?? "Valderia"}</span>
+            <CitySwitcher cities={cities} activeCityId={city?.id ?? ""} />
             <GameNav />
           </div>
           <form action={signOut}>

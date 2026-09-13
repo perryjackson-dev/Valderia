@@ -28,6 +28,7 @@ export async function startTroopTraining(
     return { error: error.message };
   }
 
+  revalidatePath("/field");
   revalidatePath("/troops");
   revalidatePath("/", "layout");
   return null;
