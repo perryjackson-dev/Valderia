@@ -572,7 +572,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      resolve_plot_upgrades: { Args: { p_city_id: string }; Returns: undefined }
+      start_building_upgrade: {
+        Args: {
+          p_building_type: string
+          p_city_id: string
+          p_plot_index: number
+          p_plot_kind: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
